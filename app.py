@@ -13,6 +13,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 
 import db
+import terminator as t
 
 TITLE = 'Ribbit Network'
 REFRESH_MS = 60 * 1000
@@ -33,6 +34,7 @@ def serve_layout() -> html.Div:
         dcc.Interval(id='interval', interval=REFRESH_MS, n_intervals=0),
         dcc.Store(id='selected-sensor', storage_type='local', data=None),
         dcc.Store(id='sensor-data', storage_type='local', data=[]),
+        html.Script(src='https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js'),
 
         html.Div([
             html.Img(src='assets/frog.svg'),
@@ -58,6 +60,7 @@ def serve_layout() -> html.Div:
                                  attribution='Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'),
                     dl.LocateControl(startDirectly=True, options=dict(keepCurrentZoomLevel=True, drawCircle=False, drawMarker=False)),
                     dl.LayerGroup(id='marker-layer', children=[dl.GeoJSON(id="geojson")]),
+                    dl.LayerGroup(id='terminator-layer', children=[dl.GeoJSON(id="terminator")]),
                     dl.Colorbar(colorscale=colorscale, width=20, height=200, min=300, max=600, unit='PPM'),
                     dl.GestureHandling(),
                 ],
@@ -100,6 +103,7 @@ def serve_layout() -> html.Div:
         html.Div([
             html.Div(id='timeseries'),
             html.Div(id='timezone', hidden=True),
+            html.Div(id='datetime', hidden=True),
         ], id='graphs'),
     ])
     
@@ -116,6 +120,16 @@ app.clientside_callback(
     Input('onload', 'children'),
 )
 
+# Get browser date and time
+app.clientside_callback(
+    '''
+    function(n_intervals) {
+        return Date.now()
+    }
+    ''',
+    Output('datetime', 'children'),
+    Input('onload', 'children'),
+)
 
 # Update the Map
 @app.callback(
@@ -142,6 +156,19 @@ def update_map(_children, _n_intervals, selected_sensor: Optional[str]) -> dl.Ge
                      colorscale=colorscale, selectedSensor=selected_sensor),
     )
 
+# Update terminator
+@app.callback(
+    Output('terminator-layer', 'children'),
+    [
+        Input('onload', 'children'),
+        Input('interval', 'n_intervals'),
+        Input('datetime', 'children'),
+    ],
+)
+def update_terminator(_children, _n_intervals, datetime) -> dl.GeoJSON:
+    terminator = t.get_terminator(datetime)
+    layer = dl.GeoJSON(data=terminator,id='terminator',zoomToBoundsOnClick=False,options=dict(style=dict(color="red")))
+    return layer
 
 @app.callback(
     Output('selected-sensor', 'data'),
