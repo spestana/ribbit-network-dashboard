@@ -34,8 +34,6 @@ def serve_layout() -> html.Div:
         dcc.Interval(id='interval', interval=REFRESH_MS, n_intervals=0),
         dcc.Store(id='selected-sensor', storage_type='local', data=None),
         dcc.Store(id='sensor-data', storage_type='local', data=[]),
-        html.Script(src='https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js'),
-
         html.Div([
             html.Img(src='assets/frog.svg'),
             html.A(html.H1(TITLE),
@@ -66,8 +64,8 @@ def serve_layout() -> html.Div:
                 ],
                 id='map',
                 zoom=3,
-                minZoom=3,
-                maxBounds=[[-75, -180],[75, 200]],
+                #minZoom=3,
+                #maxBounds=[[-75, -180],[75, 200]],
             ),
         ], id='map-container'),
         html.Div([
@@ -166,8 +164,9 @@ def update_map(_children, _n_intervals, selected_sensor: Optional[str]) -> dl.Ge
     ],
 )
 def update_terminator(_children, _n_intervals, datetime) -> dl.GeoJSON:
-    terminator = t.get_terminator(datetime)
-    layer = dl.GeoJSON(data=terminator,id='terminator',zoomToBoundsOnClick=False,options=dict(style=dict(color="red")))
+    resolution = 1 # degrees lat and lon
+    terminator = t.get_terminator(datetime, resolution)
+    layer = dl.GeoJSON(data=terminator,id='terminator',zoomToBoundsOnClick=False,options=dict(style=dict(color="blue")))
     return layer
 
 @app.callback(
